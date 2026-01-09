@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard | E-Logbook{% endblock %}
+
+{% block header_center %}
+    <span class="fw-bold">DASHBOARD</span>
+{% endblock %}
+
+{% block action_buttons %}
+    <a href="{% url 'elog:logbook_create' %}" class="btn btn-primary btn-sm fw-bold shadow-sm">
+        <i class="fas fa-plus me-1"></i> New Logbook
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    
+    <div class="d-flex align-items-center mb-3 mt-2">
+        <h4 class="text-primary fw-bold m-0"><i class="fas fa-book me-2"></i>My Logbooks</h4>
+        <span class="badge bg-light text-dark border ms-2">{{ my_logbooks.count }}</span>
+    </div>
+
+    {% if my_logbooks %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
+        {% for book in my_logbooks %}
+        <div class="col">
+            <div class="card h-100 shadow-sm border-0 hover-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title fw-bold text-dark mb-0 text-truncate" style="max-width: 70%;">
+                            {{ book.name }}
+                        </h5>
+                        {% if book.access_level == 'private' %}
+                            <span class="badge bg-secondary"><i class="fas fa-lock me-1"></i>Private</span>
+                        {% elif book.access_level == 'shared' %}
+                            <span class="badge bg-info text-dark"><i class="fas fa-users me-1"></i>Shared</span>
+                        {% else %}
+                            <span class="badge bg-success"><i class="fas fa-globe me-1"></i>Public</span>
+                        {% endif %}
+                    </div>
+                    
+                    <p class="card-text text-muted small" style="min-height: 40px;">
+                        {{ book.description|default:"No description provided."|truncatechars:80 }}
+                    </p>
+                    
+                    <div class="d-flex justify-content-between align-items-end mt-3">
+                        <small class="text-muted" style="font-size: 0.8rem;">
+                            <i class="far fa-clock me-1"></i> {{ book.updated_at|date:"M d, Y" }}
+                        </small>
+                        <a href="{% url 'elog:log_list' book.id %}" class="btn btn-outline-primary btn-sm fw-bold stretched-link">
+                            Open <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-light border text-center py-5 mb-5">
+        <div class="text-muted mb-3"><i class="fas fa-book-open fa-3x"></i></div>
+        <h5>No logbooks found.</h5>
+        <p class="text-muted">Create your first logbook to get started!</p>
+        <a href="{% url 'elog:logbook_create' %}" class="btn btn-primary btn-sm">Create Logbook</a>
+    </div>
+    {% endif %}
+
+    <hr class="my-4 text-muted">
+
+    <div class="d-flex align-items-center mb-3">
+        <h4 class="text-secondary fw-bold m-0"><i class="fas fa-share-alt me-2"></i>Shared & Public</h4>
+        <span class="badge bg-light text-dark border ms-2">{{ shared_logbooks.count }}</span>
+    </div>
+
+    {% if shared_logbooks %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for book in shared_logbooks %}
+        <div class="col">
+            <div class="card h-100 shadow-sm border-0 bg-light">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title fw-bold text-dark mb-0 text-truncate">
+                            {{ book.name }}
+                        </h5>
+                        {% if book.access_level == 'public' %}
+                            <span class="badge bg-success"><i class="fas fa-globe"></i> Public</span>
+                        {% else %}
+                            <span class="badge bg-info text-dark"><i class="fas fa-users"></i> Shared</span>
+                        {% endif %}
+                    </div>
+
+                    <p class="card-text text-muted small mb-2">
+                        <i class="fas fa-user-circle me-1"></i> Owner: <strong>{{ book.owner.get_full_name|default:book.owner.username }}</strong>
+                    </p>
+                    
+                    <p class="card-text text-muted small text-truncate">
+                        {{ book.description }}
+                    </p>
+
+                    <div class="text-end mt-3">
+                        <a href="{% url 'elog:log_list' book.id %}" class="btn btn-sm btn-outline-secondary fw-bold stretched-link">
+                            View Logbook <i class="fas fa-external-link-alt ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-muted py-4">
+        <p>No shared logbooks available at the moment.</p>
+    </div>
+    {% endif %}
+
+</div>
+
+<style>
+    /* Add hover effect for cards */
+    .hover-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .hover-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+        border-color: #0d6efd !important;
+    }
+</style>
+{% endblock %}

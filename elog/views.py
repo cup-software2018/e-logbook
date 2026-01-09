@@ -22,17 +22,23 @@ from weasyprint import HTML
 
 def get_visible_logbook(logbook_id, user):
     """
-    Helper to retrieve a logbook if the user has read access.
-    Access Rule: Owner OR Public OR Shared.
+    Helper function to get a logbook only if the user has permission.
+    Replaces the old 'property_type' logic with 'access_level' & 'allowed_groups'.
     """
-    return get_object_or_404(
-        Logbook,
-        Q(id=logbook_id) & (
-            Q(owner=user) |
-            Q(property_type='PUBLIC') |
-            Q(property_type='SHARED')
+    # 1. 유저가 속한 그룹들 가져오기
+    user_groups = user.groups.all()
+
+    # 2. 권한 조건 정의 (Owner OR Public OR Shared Group Member)
+    qs = Logbook.objects.filter(
+        Q(id=logbook_id) & (              # ID가 일치하고
+            Q(owner=user) |               # 주인이거나
+            Q(access_level='public') |    # 전체 공개이거나
+            (Q(access_level='shared') & Q(allowed_groups__in=user_groups))  # 그룹 공유된 경우
         )
-    )
+    ).distinct()  # 그룹 중복 제거
+
+    # 3. 결과 반환 (없으면 404 에러)
+    return get_object_or_404(qs)
 
 
 def has_write_permission(logbook, user):
@@ -50,24 +56,30 @@ def has_write_permission(logbook, user):
 
 
 @login_required
-def logbook_dashboard(request):
+def logbook_dashboard(request):  # Check if function name matches your urls.py
     """
-    Display logbooks owned by the user and other accessible logbooks.
+    Dashboard view showing:
+    1. My Logbooks (Owner)
+    2. Shared & Public Logbooks (Public OR Shared with User's Groups)
     """
-    # 1. My Logbooks
-    my_logbooks = Logbook.objects.filter(
-        owner=request.user).order_by('-created_at')
+    # 1. Logbooks created by the current user
+    my_logbooks = Logbook.objects.filter(owner=request.user)
 
-    # 2. Shared/Public Logbooks (excluding mine)
+    # 2. Shared & Public Logbooks
+    # [FIX] Logic updated to use 'access_level' instead of 'property_type'
+
+    # Get IDs of groups the current user belongs to
+    user_groups = request.user.groups.all()
+
     shared_logbooks = Logbook.objects.filter(
-        Q(property_type__in=['SHARED', 'PUBLIC'])
-    ).exclude(owner=request.user).order_by('-created_at')
+        Q(access_level='public') |
+        (Q(access_level='shared') & Q(allowed_groups__in=user_groups))
+    ).distinct().exclude(owner=request.user)
 
-    context = {
+    return render(request, 'elog/logbook_list.html', {
         'my_logbooks': my_logbooks,
         'shared_logbooks': shared_logbooks,
-    }
-    return render(request, 'elog/logbook_dashboard.html', context)
+    })
 
 
 @login_required
