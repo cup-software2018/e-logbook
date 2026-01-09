@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Login | E-Logbook{% endblock %}
+
+{% block nav_buttons %}{% endblock %}
+{% block header_center %}
+<span class="fw-bold">LOGBOOK SYSTEM ACCESS</span>
+{% endblock %}
+{% block action_buttons %}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-center" style="min-height: 60vh;">
+    <div class="card shadow-sm border-0" style="width: 100%; max-width: 400px;">
+        <div class="card-header bg-dark text-white text-center py-3">
+            <h4 class="m-0 fw-bold"><i class="fas fa-lock me-2"></i>Sign In</h4>
+        </div>
+
+        <div class="card-body p-4">
+            <form method="post" action="{% url 'login' %}">
+                {% csrf_token %}
+
+                {% if form.errors %}
+                <div class="alert alert-danger small py-2 mb-3">
+                    <i class="fas fa-exclamation-circle me-1"></i>
+                    Invalid username or password.
+                </div>
+                {% endif %}
+
+                <div class="mb-3">
+                    <label for="id_username" class="form-label fw-bold small text-secondary">Username</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0">
+                            <i class="fas fa-user text-muted"></i>
+                        </span>
+                        <input type="text" name="username" autofocus required id="id_username"
+                            class="form-control border-start-0" placeholder="Enter ID">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="id_password" class="form-label fw-bold small text-secondary">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0">
+                            <i class="fas fa-key text-muted"></i>
+                        </span>
+                        <input type="password" name="password" required id="id_password"
+                            class="form-control border-start-0" placeholder="Enter Password">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">
+                    LOGIN
+                </button>
+
+                <input type="hidden" name="next" value="{{ next }}">
+            </form>
+        </div>
+
+        <div class="card-footer bg-light text-center py-3">
+            <div class="d-flex justify-content-center gap-2 align-items-center">
+                <small class="text-muted">No account?</small>
+                <a href="{% url 'elog:signup' %}" class="btn btn-sm btn-outline-success fw-bold rounded-pill px-3">
+                    Sign Up
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign Up | E-Logbook{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    /* Optional: Fix Bootstrap 5 + Select2 height mismatch */
+    .select2-container .select2-selection--multiple {
+        min-height: 38px;
+        border: 1px solid #ced4da;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-center" style="min-height: 60vh;">
+    <div class="card shadow-sm border-0" style="width: 100%; max-width: 450px;">
+        <div class="card-header bg-success text-white text-center py-3">
+            <h4 class="m-0 fw-bold"><i class="fas fa-user-plus me-2"></i>Create Account</h4>
+        </div>
+        
+        <div class="card-body p-4">
+            <form method="post">
+                {% csrf_token %}
+                
+                {% if form.errors %}
+                    <div class="alert alert-danger small mb-3">
+                        Please correct the errors below.
+                    </div>
+                {% endif %}
+
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-secondary">{{ field.label }}</label>
+                    
+                    <div class="input-group">
+                        {% if field.name != 'groups' %}
+                        <span class="input-group-text bg-light border-end-0">
+                            <i class="fas fa-pencil-alt text-muted small"></i>
+                        </span>
+                        {% endif %}
+                        
+                        {{ field }}
+                        
+                    </div>
+
+                    {% if field.help_text %}
+                        <div class="form-text small text-muted" style="font-size: 0.75rem;">
+                            {{ field.help_text|safe }}
+                        </div>
+                    {% endif %}
+                    {% if field.errors %}
+                        <div class="text-danger small mt-1">
+                            {{ field.errors.as_text }}
+                        </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm mt-3">
+                    REGISTER
+                </button>
+            </form>
+        </div>
+        
+        <div class="card-footer bg-light text-center py-3">
+            <small class="text-muted">Already have an account? 
+                <a href="{% url 'login' %}" class="fw-bold text-success text-decoration-none">Log in</a>
+            </small>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        // Initialize Select2 on the groups field
+        $('.select2-multi').select2({
+            placeholder: "Select your team(s)",
+            allowClear: true,
+            width: '100%' # Ensure it fits the card width
+        });
+    });
+</script>
+{% endblock %}

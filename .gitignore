@@ -1,0 +1,22 @@
+# .gitignore
+
+# Python & Django
+*.pyc
+__pycache__/
+db.sqlite3
+.DS_Store
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Static & Media (User uploads should not be in git code)
+media/
+staticfiles/
+
+# VS Code settings (Optional)
+.vscode/
+
+# Environment variables
+.env

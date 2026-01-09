@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">Create New Logbook</h4>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label for="name" class="form-label fw-bold">Logbook Name</label>
+              <input type="text" name="name" id="name" class="form-control" placeholder="e.g., Daily Production Log"
+                required>
+            </div>
+            <div class="mb-3">
+              <label for="description" class="form-label fw-bold">Description</label>
+              <textarea name="description" id="description" class="form-control" rows="3"
+                placeholder="Briefly describe the purpose of this logbook"></textarea>
+            </div>
+            <div class="row mb-3">
+              <div class="col">
+                <label for="book_type" class="form-label fw-bold">Type</label>
+                <select name="book_type" id="book_type" class="form-select">
+                  {% for code, label in types %}
+                  <option value="{{ code }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col">
+                <label for="property_type" class="form-label fw-bold">Property</label>
+                <select name="property_type" id="property_type" class="form-select">
+                  {% for code, label in properties %}
+                  <option value="{{ code }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="d-grid gap-2 mt-4">
+              <button type="submit" class="btn btn-primary btn-lg">Create Logbook</button>
+              <a href="{% url 'elog:logbook_dashboard' %}" class="btn btn-link text-muted">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,503 @@
+/* =========================================
+   1. Global & Typography
+   ========================================= */
+body {
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #d3d3d3;
+    color: #333;
+    margin: 0;
+    padding-top: 90px;
+    /* Space for fixed header */
+}
+
+/* =========================================
+   2. Fixed Header & Search Bar
+   ========================================= */
+.fixed-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 70px;
+    background-color: #2c3e50;
+    color: white;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.header-content {
+    width: 95%;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.current-date-display {
+    font-size: 1.2em;
+    font-weight: bold;
+    background: #1a252f;
+    padding: 8px 20px;
+    border-radius: 4px;
+    color: #ecf0f1;
+}
+
+/* Search UI in Header */
+.header-right-group {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.search-container {
+    display: flex;
+    background: #1a252f;
+    border: 1px solid #34495e;
+    border-radius: 4px;
+    padding: 2px 8px;
+    transition: all 0.3s;
+}
+
+.search-container:focus-within {
+    border-color: #2980b9;
+    box-shadow: 0 0 8px rgba(41, 128, 185, 0.5);
+}
+
+.search-container input {
+    background: transparent;
+    border: none;
+    color: #ecf0f1;
+    padding: 6px;
+    font-family: inherit;
+    outline: none;
+    width: 140px;
+    /* Base width */
+    transition: width 0.3s;
+}
+
+.search-container input:focus {
+    width: 220px;
+    /* Expands on focus */
+}
+
+.search-btn {
+    background: transparent;
+    border: none;
+    color: #7f8c8d;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.search-btn:hover {
+    color: #ecf0f1;
+}
+
+/* 날짜 선택기 래퍼 */
+.date-navigation-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.date-picker-box {
+    background: #1a252f;
+    border: 1px solid #34495e;
+    padding: 5px 12px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.date-picker-box i {
+    color: #3498db;
+    margin-right: 8px;
+    font-size: 0.9em;
+}
+
+#nav-date-picker {
+    background: transparent;
+    border: none;
+    color: #ecf0f1;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    cursor: pointer;
+    outline: none;
+}
+
+/* 오늘 기록 바로가기 배지 */
+.today-badge {
+    background: #c0392b;
+    color: white;
+    font-size: 0.75em;
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-decoration: none;
+    font-weight: bold;
+    animation: blink 2s infinite;
+    /* 라이브 느낌을 위해 깜빡임 효과 */
+}
+
+/* date-label 스타일 추가 */
+.date-label {
+    font-size: 0.85em;
+    color: #bdc3c7;
+    /* 부드러운 회색 */
+    margin-right: 10px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    /* 고정된 느낌을 주기 위해 약간의 투명도 부여 */
+    opacity: 0.8;
+}
+
+.date-picker-box i {
+    color: #00d2ff;
+    /* Bright cyan for better visibility */
+    margin-right: 10px;
+    font-size: 1.5em;
+    text-shadow: 0 0 5px rgba(0, 210, 255, 0.3);
+    /* Soft glow */
+}
+
+/* Specific styling for the native date picker icon in Chrome/Edge */
+#nav-date-picker::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(1.5);
+    /* Make the default icon bright white */
+    cursor: pointer;
+    margin-left: 5px;
+}
+
+/* Hover effect for the entire box */
+.date-picker-box:hover {
+    border-color: #00d2ff;
+    transition: border-color 0.3s ease;
+}
+
+@keyframes blink {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* =========================================
+   3. Buttons & UI Elements
+   ========================================= */
+.button-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.nav-btn,
+.submit-btn,
+.btn-save-comment {
+    padding: 8px 16px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 0.9em;
+    border-radius: 4px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.nav-btn {
+    background-color: #ecf0f1;
+    border: 1px solid #7f8c8d;
+    color: #2c3e50;
+}
+
+.nav-btn:hover {
+    background-color: #d5dbdb;
+}
+
+.nav-btn.icon-only {
+    padding: 8px 12px;
+    font-size: 1.1em;
+}
+
+.btn-make,
+.submit-btn,
+.btn-save-comment {
+    background-color: #27ae60 !important;
+    color: white !important;
+    border: none;
+}
+
+.btn-make:hover,
+.submit-btn:hover {
+    background-color: #219150 !important;
+}
+
+.btn-logout {
+    background-color: #c0392b !important;
+    color: white !important;
+    border: none;
+}
+
+.btn-logout:hover {
+    background-color: #a93226 !important;
+}
+
+.action-link,
+.cancel-link {
+    font-size: 0.95em;
+    font-weight: bold;
+    color: #7f8c8d;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.action-link:hover {
+    color: #2980b9;
+    text-decoration: underline;
+}
+
+.cancel-link:hover {
+    color: #e74c3c;
+    text-decoration: underline;
+}
+
+/* =========================================
+   4. Log Entry & Layout
+   ========================================= */
+.page-container {
+    width: 96%;
+    margin: 0 auto;
+    padding-bottom: 50px;
+}
+
+.log-entry {
+    background-color: #ffffff;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    margin-bottom: 30px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.log-meta {
+    background-color: #f1f4f6;
+    padding: 10px 25px;
+    border-bottom: 1px solid #d1d8dd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-left {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.entry-time {
+    color: #2980b9;
+}
+
+.sep {
+    margin: 0 2px;
+    color: #95a5a6;
+}
+
+.log-body {
+    padding: 25px 40px;
+    line-height: 1.6;
+}
+
+.action-link {
+    font-size: 1.1em;
+    color: #7f8c8d;
+    margin-left: 12px;
+    transition: color 0.2s;
+    text-decoration: none !important;
+}
+
+.action-link:hover {
+    color: #2980b9;
+}
+
+.fa-file-pen:hover {
+    color: #f39c12;
+}
+
+.delete-btn {
+    color: #7f8c8d;
+    transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+    color: #e74c3c !important;
+    transform: scale(1.1);
+}
+
+/* =========================================
+   5. Images & Modal
+   ========================================= */
+.image-wrapper {
+    display: block;
+    margin: 20px 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.image-wrapper img {
+    width: 100% !important;
+    height: auto;
+    display: block;
+    border: 1px solid #ddd;
+    cursor: zoom-in;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    cursor: zoom-out;
+}
+
+.modal-content {
+    margin: auto;
+    display: block;
+    max-width: 90%;
+    max-height: 90vh;
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* =========================================
+   6. Comment System
+   ========================================= */
+.comment-section {
+    padding: 15px 40px 25px 40px;
+    background-color: #fcfcfc;
+    border-top: 1px solid #d1d8dd;
+}
+
+.comment-line {
+    font-size: 0.85em;
+    margin-bottom: 6px;
+    color: #444;
+}
+
+.comment-time {
+    color: #999;
+    margin-right: 8px;
+}
+
+.comment-text {
+    font-style: italic;
+}
+
+.comment-user {
+    font-weight: bold;
+    color: #2c3e50;
+    margin-left: 5px;
+}
+
+/* =========================================
+   7. Form & Editors
+   ========================================= */
+.editor-container,
+.comment-editor-container {
+    background: white;
+    margin: 40px auto;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.editor-container {
+    max-width: 1100px;
+}
+
+.comment-editor-container {
+    max-width: 700px;
+    border-top: 6px solid #2980b9;
+}
+
+.target-log-preview {
+    background: #f8f9fa;
+    border-left: 4px solid #bdc3c7;
+    padding: 12px 18px;
+    margin-bottom: 25px;
+    color: #7f8c8d;
+    font-size: 0.95em;
+}
+
+.label-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+}
+
+.guide-link {
+    font-size: 0.8em;
+    font-weight: bold;
+    color: #2980b9;
+    text-decoration: none;
+    background-color: #eef6fc;
+    padding: 2px 8px;
+    border-radius: 3px;
+    border: 1px solid #d1e3f0;
+}
+
+textarea,
+.comment-form textarea {
+    width: 100%;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    border: 1px solid #dcdde1;
+    border-radius: 4px;
+    background-color: #fafafa;
+    box-sizing: border-box;
+}
+
+/* Preview Grid (Create/Edit) */
+.preview-grid {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border: 1px dashed #bdc3c7;
+}
+
+.preview-item {
+    width: 180px;
+    background: white;
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: center;
+}
+
+.preview-item img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+}

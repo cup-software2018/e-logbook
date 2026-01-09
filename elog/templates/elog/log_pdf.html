@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ logbook.name }} - {{ target_date }}</title>
+    <style>
+        /* [PDF Page Settings] A4 Size & Margins */
+        @page {
+            size: A4;
+            margin: 2.5cm;
+            @bottom-center {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 10pt;
+                color: #666;
+            }
+        }
+
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #333;
+            background: #fff;
+        }
+
+        /* [Modified] Header Section: Date follows Title */
+        .pdf-header {
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+        }
+        .archive-label {
+            font-size: 9pt; 
+            color: #666; 
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .header-main-line {
+            margin: 0;
+            line-height: 1.2;
+        }
+        .logbook-name {
+            font-size: 20pt; 
+            font-weight: bold; 
+            color: #000;
+        }
+        .log-date {
+            font-size: 18pt; 
+            color: #555; 
+            font-weight: normal; 
+            margin-left: 10px;
+        }
+
+        /* Log Entry Container */
+        .entry {
+            margin-bottom: 25px;
+            border: 1px solid #ddd;
+            page-break-inside: avoid;
+        }
+
+        /* Log Header (Time & Author) */
+        .entry-header {
+            background-color: #f0f0f0;
+            padding: 8px 12px;
+            border-bottom: 1px solid #ddd;
+            font-size: 10pt;
+            display: flex;
+            justify-content: space-between;
+        }
+        .time-stamp {
+            font-family: "Courier New", Courier, monospace;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        /* Log Content */
+        .entry-content {
+            padding: 12px;
+            text-align: justify;
+        }
+        
+        /* Images */
+        .image-container {
+            margin-top: 10px;
+            text-align: center;
+        }
+        .log-image {
+            max-width: 95%;
+            border: 1px solid #eee;
+            margin-bottom: 5px;
+        }
+        .image-caption {
+            font-size: 8pt;
+            color: #777;
+            margin-bottom: 10px;
+        }
+
+        /* Comments */
+        .comments-section {
+            background-color: #fafafa;
+            border-top: 1px solid #eee;
+            padding: 8px 12px;
+            font-size: 9pt;
+        }
+        .comment-line {
+            margin-bottom: 4px;
+            border-bottom: 1px dotted #e0e0e0;
+            padding-bottom: 4px;
+        }
+        .comment-time {
+            font-family: "Courier New", Courier, monospace;
+            font-weight: bold;
+            color: #666;
+            margin-right: 5px;
+        }
+
+        /* Footer Info */
+        .footer-info {
+            margin-top: 50px;
+            font-size: 8pt;
+            color: #999;
+            text-align: right;
+            border-top: 1px solid #eee;
+            padding-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="pdf-header">
+        <div class="archive-label">Daily Log Archive</div>
+        <h1 class="header-main-line">
+            <span class="logbook-name">{{ logbook.name }}</span>
+            <span class="log-date">| {{ target_date|date:"Y-m-d (D)" }}</span>
+        </h1>
+    </div>
+
+    {% for log in logs %}
+    <div class="entry">
+        <div class="entry-header">
+            <div>
+                <span class="time-stamp">{{ log.created_at|date:"H:i:s" }}</span>
+                <strong>{{ log.user.username }}</strong>
+            </div>
+            <span style="color: #777; font-size: 8pt;">ID: #{{ log.id }}</span>
+        </div>
+
+        <div class="entry-content">
+            {{ log.content_html|safe }}
+
+            {% if log.images.exists %}
+            <div class="image-container">
+                {% for img in log.images.all %}
+                <div style="display: inline-block; margin: 5px;">
+                    <img src="file://{{ img.image.path }}" class="log-image" 
+                         style="width: {{ img.width }}px; max-width: 600px;">
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        {% if log.comments.exists %}
+        <div class="comments-section">
+            <div style="font-weight: bold; margin-bottom: 5px; color: #555;">Comments:</div>
+            {% for comment in log.comments.all %}
+            <div class="comment-line">
+                <span class="comment-time">{{ comment.created_at|date:"H:i:s" }}</span>
+                <span>{{ comment.content }}</span>
+                <span style="font-style: italic; color: #777;"> - {{ comment.user.username }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% empty %}
+    <div style="text-align: center; color: #999; margin-top: 50px;">
+        <p>No entries recorded for this date.</p>
+    </div>
+    {% endfor %}
+
+    <div class="footer-info">
+        Printed by: {{ request.user.username }} | Generated: {% now "Y-m-d H:i:s" %}
+    </div>
+
+</body>
+</html>
