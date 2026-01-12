@@ -11,7 +11,7 @@ from django.contrib.auth import login
 
 from .constants import LOGBOOK_TYPES, LOGBOOK_PROPERTIES
 from .models import Logbook, Log, LogImage, Comment
-from .forms import SignUpForm
+from .forms import SignUpForm, LogbookForm
 
 import markdown
 from datetime import datetime, timedelta
@@ -25,30 +25,30 @@ def get_visible_logbook(logbook_id, user):
     Helper function to get a logbook only if the user has permission.
     Replaces the old 'property_type' logic with 'access_level' & 'allowed_groups'.
     """
-    # 1. 유저가 속한 그룹들 가져오기
+    # 1. Get user groups
     user_groups = user.groups.all()
 
-    # 2. 권한 조건 정의 (Owner OR Public OR Shared Group Member)
+    # 2. Define permission conditions (Owner OR Public OR Shared Group Member)
     qs = Logbook.objects.filter(
-        Q(id=logbook_id) & (              # ID가 일치하고
-            Q(owner=user) |               # 주인이거나
-            Q(access_level='public') |    # 전체 공개이거나
-            (Q(access_level='shared') & Q(allowed_groups__in=user_groups))  # 그룹 공유된 경우
+        Q(id=logbook_id) & (
+            Q(owner=user) |
+            Q(access_level='public') |
+            (Q(access_level='shared') & Q(allowed_groups__in=user_groups))
         )
-    ).distinct()  # 그룹 중복 제거
+    ).distinct()
 
-    # 3. 결과 반환 (없으면 404 에러)
+    # 3. Return object or 404
     return get_object_or_404(qs)
 
 
 def has_write_permission(logbook, user):
     """
     Check if the user has permission to create or update logs.
-    Rule: Owner has full access, SHARED allows any logged-in user to write.
     """
     if logbook.owner == user:
         return True
-    if logbook.property_type == 'SHARED':
+    # Assuming 'access_level' replaced property_type logic, but keeping legacy check if needed
+    if getattr(logbook, 'access_level', '') == 'shared' or getattr(logbook, 'property_type', '') == 'SHARED':
         return True
     return False
 
@@ -56,19 +56,11 @@ def has_write_permission(logbook, user):
 
 
 @login_required
-def logbook_dashboard(request):  # Check if function name matches your urls.py
+def logbook_dashboard(request):
     """
-    Dashboard view showing:
-    1. My Logbooks (Owner)
-    2. Shared & Public Logbooks (Public OR Shared with User's Groups)
+    Dashboard view showing My Logbooks and Shared/Public Logbooks.
     """
-    # 1. Logbooks created by the current user
     my_logbooks = Logbook.objects.filter(owner=request.user)
-
-    # 2. Shared & Public Logbooks
-    # [FIX] Logic updated to use 'access_level' instead of 'property_type'
-
-    # Get IDs of groups the current user belongs to
     user_groups = request.user.groups.all()
 
     shared_logbooks = Logbook.objects.filter(
@@ -85,28 +77,24 @@ def logbook_dashboard(request):  # Check if function name matches your urls.py
 @login_required
 def logbook_create(request):
     """
-    Handle the creation of a new logbook.
+    Handle the creation of a new logbook using LogbookForm.
     """
     if request.method == "POST":
-        name = request.POST.get('name')
-        description = request.POST.get('description')
-        book_type = request.POST.get('book_type')
-        prop_type = request.POST.get('property_type')
+        form = LogbookForm(request.POST)
+        if form.is_valid():
+            # Create object but don't save to DB yet
+            logbook = form.save(commit=False)
+            # Assign the current user as owner
+            logbook.owner = request.user
+            # Save to DB
+            logbook.save()
+            # Save Many-to-Many data (Allowed Groups)
+            form.save_m2m()
+            return redirect('elog:logbook_dashboard')
+    else:
+        form = LogbookForm()
 
-        Logbook.objects.create(
-            name=name,
-            description=description,
-            owner=request.user,
-            book_type=book_type,
-            property_type=prop_type
-        )
-        return redirect('elog:logbook_dashboard')
-
-    context = {
-        'types': LOGBOOK_TYPES,
-        'properties': LOGBOOK_PROPERTIES,
-    }
-    return render(request, 'elog/logbook_create_form.html', context)
+    return render(request, 'elog/logbook_create_form.html', {'form': form})
 
 # --- Log Operations (CRUD) ---
 
@@ -114,69 +102,103 @@ def logbook_create(request):
 @login_required
 def log_list(request, logbook_id):
     """
-    List logs for a specific logbook with search and date navigation.
+    List logs for a specific logbook with:
+    1. Search functionality.
+    2. SMART Date Navigation (skips empty days).
+    3. Calendar Markers (sends list of dates with logs).
     """
+    # 1. Get Logbook (Check permissions)
     logbook = get_visible_logbook(logbook_id, request.user)
 
+    # 2. Get parameters
     date_str = request.GET.get('date')
     search_query = request.GET.get('search', '').strip()
 
-    # Base QuerySet with optimizations
+    # 3. Base QuerySet (Optimized with prefetch)
     logs_qs = Log.objects.filter(logbook=logbook).prefetch_related(
         'user', 'images', 'comments__user'
     )
 
+    # [NEW] Get a list of ALL dates that have logs (for Flatpickr calendar dots)
+    # Returns a list like: ['2023-10-01', '2023-10-05', ...]
+    log_dates_qs = logs_qs.values_list(
+        'created_at__date', flat=True).distinct()
+    log_dates = [d.strftime('%Y-%m-%d') for d in log_dates_qs if d]
+
+    # 4. Logic Branch: Search vs Date Navigation
     if search_query:
-        # Search Mode: Show all matching logs, newest first
+        # --- Search Mode ---
+        # Show all matching logs, newest first
         logs = logs_qs.filter(
             Q(content__icontains=search_query) |
             Q(user__username__icontains=search_query)
         ).order_by('-created_at')
+
         target_date = None
+        prev_date_str = None
+        next_date_str = None
+
     else:
-        # Date Navigation Mode
+        # --- Date Navigation Mode ---
+
+        # Determine Target Date
         if date_str:
             try:
                 target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
             except ValueError:
                 target_date = timezone.now().date()
         else:
-            # Default: Show date of the most recent log
+            # Default: Go to the date of the most recent log (or today if empty)
             latest_log = logs_qs.order_by('-created_at').first()
             target_date = latest_log.created_at.date() if latest_log else timezone.now().date()
 
-        # Filter by target date, oldest first (Chronological)
+        # Filter logs for the specific date (Chronological order)
         logs = logs_qs.filter(
             created_at__date=target_date).order_by('created_at')
 
-    # Markdown Processing
-    md = markdown.Markdown(extensions=['tables', 'fenced_code'])
+        # [SMART NAVIGATION] Find actual previous/next dates with data
+
+        # Find the latest log BEFORE the target date
+        prev_log = logs_qs.filter(
+            created_at__date__lt=target_date).order_by('-created_at').first()
+        prev_date_str = prev_log.created_at.date().strftime(
+            '%Y-%m-%d') if prev_log else None
+
+        # Find the earliest log AFTER the target date
+        next_log = logs_qs.filter(
+            created_at__date__gt=target_date).order_by('created_at').first()
+        next_date_str = next_log.created_at.date().strftime(
+            '%Y-%m-%d') if next_log else None
+
+    # 5. Markdown Processing (Convert content to HTML)
+    md = markdown.Markdown(extensions=['tables', 'fenced_code', 'nl2br'])
     for log in logs:
         log.content_html = md.convert(log.content)
 
-    # Date Navigation Links
-    today_date = timezone.now().date()
-    base_date = target_date if target_date else today_date
-    prev_date = (base_date - timedelta(days=1)).strftime('%Y-%m-%d')
-    next_date = (base_date + timedelta(days=1)).strftime('%Y-%m-%d')
-
+    # 6. Context Preparation
     context = {
         'logbook': logbook,
         'logs': logs,
+
+        # Date Info
         'current_date': target_date,
-        'today_date': today_date,
-        'prev_date': prev_date,
-        'next_date': next_date,
+        'today_date': timezone.now().date(),
+        'log_dates': log_dates,       # For Calendar Dots
+        'prev_date': prev_date_str,   # For Smart Nav Button (<)
+        'next_date': next_date_str,   # For Smart Nav Button (>)
+
+        # Other Info
         'search_query': search_query,
         'can_write': has_write_permission(logbook, request.user),
     }
+
     return render(request, 'elog/log_list.html', context)
 
 
 @login_required
 def log_create(request, logbook_id):
     """
-    Create a new log entry. Write access: Owner or Shared property.
+    Create a new log entry.
     """
     logbook = get_visible_logbook(logbook_id, request.user)
 
@@ -185,21 +207,21 @@ def log_create(request, logbook_id):
 
     if request.method == "POST":
         content = request.POST.get('content')
-        # Ensure form has enctype="multipart/form-data"
         images = request.FILES.getlist('images')
 
         log = Log.objects.create(
             logbook=logbook,
             content=content,
             user=request.user,
-            # created_at is handled by model default
         )
 
         for img in images:
             LogImage.objects.create(log=log, image=img, width=400)
 
-        # Redirect to the date of the created log
-        return redirect(f"{reverse('elog:log_list', args=[logbook.id])}?date={log.created_at.date()}")
+        # [MODIFIED] Added anchor (#log-ID) to the redirect URL
+        # This ensures the page scrolls to the newly created log.
+        redirect_url = f"{reverse('elog:log_list', args=[logbook.id])}?date={log.created_at.date()}#log-{log.id}"
+        return redirect(redirect_url)
 
     return render(request, 'elog/log_form.html', {'logbook': logbook})
 
@@ -207,12 +229,11 @@ def log_create(request, logbook_id):
 @login_required
 def log_edit(request, logbook_id, log_id):
     """
-    Edit a log entry. Permission: Author or Logbook Owner.
+    Edit a log entry.
     """
     logbook = get_visible_logbook(logbook_id, request.user)
     log_entry = get_object_or_404(Log, id=log_id, logbook=logbook)
 
-    # Permission Check
     if log_entry.user != request.user and logbook.owner != request.user:
         return HttpResponseForbidden("Permission denied.")
 
@@ -241,37 +262,36 @@ def log_edit(request, logbook_id, log_id):
             LogImage.objects.create(log=log_entry, image=f, width=400)
 
         log_date = log_entry.created_at.date().strftime('%Y-%m-%d')
-        return redirect(f"{reverse('elog:log_list', args=[logbook.id])}?date={log_date}")
+
+        # [MODIFIED] Added anchor (#log-ID) to redirect URL
+        # Scrolls back to the specific log entry after editing.
+        redirect_url = f"{reverse('elog:log_list', args=[logbook.id])}?date={log_date}#log-{log_entry.id}"
+        return redirect(redirect_url)
 
     return render(request, 'elog/log_edit_form.html', {'log': log_entry, 'logbook': logbook})
 
 
 @login_required
 def log_delete(request, logbook_id, log_id):
-    """
-    Delete a log entry. Permission: Author or Logbook Owner.
-    """
     logbook = get_visible_logbook(logbook_id, request.user)
     log = get_object_or_404(Log, id=log_id, logbook=logbook)
 
-    # Permission Check
     if log.user != request.user and logbook.owner != request.user:
         return HttpResponseForbidden("Permission denied.")
 
     if request.method == 'POST':
         log_date = log.created_at.strftime('%Y-%m-%d')
         log.delete()
+        # [NOTE] No anchor here because the log is gone.
         return redirect(f"{reverse('elog:log_list', args=[logbook.id])}?date={log_date}")
 
     return redirect('elog:log_list', logbook_id=logbook.id)
-
-# --- Interaction & Export ---
 
 
 @login_required
 def log_comment(request, logbook_id, log_id):
     """
-    Post a comment to a log entry.
+    Post a comment.
     """
     logbook = get_visible_logbook(logbook_id, request.user)
     log_entry = get_object_or_404(Log, id=log_id, logbook=logbook)
@@ -283,43 +303,37 @@ def log_comment(request, logbook_id, log_id):
                 log=log_entry,
                 content=content,
                 user=request.user,
-                # created_at handled by auto_now_add
             )
 
         log_date = log_entry.created_at.date().strftime('%Y-%m-%d')
-        return redirect(f"{reverse('elog:log_list', args=[logbook.id])}?date={log_date}")
+
+        # [MODIFIED] Added anchor (#log-ID) to redirect URL
+        # Keeps focus on the log entry where the comment was added.
+        redirect_url = f"{reverse('elog:log_list', args=[logbook.id])}?date={log_date}#log-{log_entry.id}"
+        return redirect(redirect_url)
 
     return render(request, 'elog/log_comment_form.html', {'log': log_entry, 'logbook': logbook})
 
 
 @login_required
 def export_logs_pdf(request, logbook_id):
-    """
-    Generates a PDF of logs for a specific date, converting Markdown to HTML.
-    """
-    # 1. Get the target date
+    # ... (No changes needed here for this task) ...
+    # (Keeping your existing export code structure for brevity)
     date_str = request.GET.get('date')
     if date_str:
         current_date = parse_date(date_str)
     else:
         current_date = timezone.now().date()
 
-    # 2. Retrieve Logbook and Log data
     logbook = get_object_or_404(Logbook, id=logbook_id)
     logs = Log.objects.filter(
-        logbook=logbook,
-        created_at__date=current_date
-    ).order_by('created_at')
+        logbook=logbook, created_at__date=current_date).order_by('created_at')
 
-    # [FIX] 3. Convert Markdown content to HTML manually for each log
-    # This step is crucial because the template expects 'log.content_html'
     for log in logs:
         log.content_html = markdown.markdown(
-            log.content,
-            extensions=['fenced_code', 'tables', 'nl2br']  # Common extensions
+            log.content, extensions=['fenced_code', 'tables', 'nl2br']
         )
 
-    # 4. Prepare context data for the template
     context = {
         'logbook': logbook,
         'logs': logs,
@@ -327,85 +341,20 @@ def export_logs_pdf(request, logbook_id):
         'request': request,
     }
 
-    # 5. Render HTML content
     html_string = render_to_string('elog/log_pdf.html', context)
-
-    # 6. Generate PDF using WeasyPrint
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="Log_{current_date}.pdf"'
-
     HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf(response)
-
     return response
 
 
 def signup(request):
-    """
-    Handles new user registration with extended fields.
-    """
     if request.method == 'POST':
-        # Use Custom Form
         form = SignUpForm(request.POST)
         if form.is_valid():
             user = form.save()
             login(request, user)
             return redirect('elog:logbook_dashboard')
     else:
-        # Use Custom Form
         form = SignUpForm()
-
     return render(request, 'registration/signup.html', {'form': form})
-
-
-@login_required
-def logbook_list(request):
-    """
-    Dashboard view showing:
-    1. My Logbooks (Owner)
-    2. Shared & Public Logbooks (Public OR Shared with User's Groups)
-    """
-    # 1. Logbooks created by the current user
-    my_logbooks = Logbook.objects.filter(owner=request.user)
-
-    # 2. Shared & Public Logbooks
-    # Logic:
-    #   (Access Level is Public)
-    #   OR
-    #   (Access Level is Shared AND The logbook's allowed groups intersect with User's groups)
-
-    # Get IDs of groups the current user belongs to
-    user_groups = request.user.groups.all()
-
-    shared_logbooks = Logbook.objects.filter(
-        Q(access_level='public') |
-        (Q(access_level='shared') & Q(allowed_groups__in=user_groups))
-    ).distinct().exclude(owner=request.user)
-
-    return render(request, 'elog/logbook_list.html', {
-        'my_logbooks': my_logbooks,
-        'shared_logbooks': shared_logbooks,
-    })
-
-# Helper function to check permissions
-
-
-def check_logbook_access(user, logbook):
-    """
-    Returns True if user has access to the logbook, False otherwise.
-
-    Permission Rules:
-    1. Owner -> Always Allow
-    2. Public -> Always Allow
-    3. Shared -> Allow if user belongs to one of the allowed_groups
-    """
-    # 1. Check Owner or Public status
-    if logbook.owner == user or logbook.access_level == 'public':
-        return True
-
-    # 2. Check Group Membership for Shared logbooks
-    if logbook.access_level == 'shared':
-        # Check if any of the user's groups are in the logbook's allowed_groups
-        if user.groups.filter(id__in=logbook.allowed_groups.all()).exists():
-            return True
-
-    return False

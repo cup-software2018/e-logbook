@@ -130,7 +130,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Redirect unauthorized users to the admin login page
 # After login, go to the main dashboard
-LOGIN_REDIRECT_URL = 'elog:logbook_list'
+LOGIN_REDIRECT_URL = 'elog:logbook_dashboard'
 # After logout, go back to the login page (not admin)
 LOGOUT_REDIRECT_URL = 'login'
 # URL to redirect to if a user is not logged in

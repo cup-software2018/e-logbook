@@ -7,20 +7,36 @@
 {% block nav_buttons %}
 <div class="d-flex align-items-center bg-light rounded px-1 py-1 ms-2" style="gap: 2px;">
     
-    <a href="?date={{ prev_date }}&search={{ search_query }}" 
-       class="btn btn-sm btn-link text-secondary p-0 px-2" title="Previous Date">
-        <i class="fas fa-chevron-left"></i>
-    </a>
+    {% if prev_date %}
+        <a href="?date={{ prev_date }}" 
+           class="btn btn-sm btn-link text-secondary p-0 px-2" 
+           title="Go to {{ prev_date }}">
+            <i class="fas fa-chevron-left"></i>
+        </a>
+    {% else %}
+        <span class="btn btn-sm btn-link text-muted p-0 px-2 disabled" 
+              title="No older logs" style="cursor: default; opacity: 0.3;">
+            <i class="fas fa-chevron-left"></i>
+        </span>
+    {% endif %}
 
     <a href="{% url 'elog:log_list' logbook.id %}" 
        class="btn btn-sm btn-link text-dark p-0 px-2" title="Latest Logs">
         <i class="fas fa-calendar-day"></i>
     </a>
 
-    <a href="?date={{ next_date }}&search={{ search_query }}" 
-       class="btn btn-sm btn-link text-secondary p-0 px-2" title="Next Date">
-        <i class="fas fa-chevron-right"></i>
-    </a>
+    {% if next_date %}
+        <a href="?date={{ next_date }}" 
+           class="btn btn-sm btn-link text-secondary p-0 px-2" 
+           title="Go to {{ next_date }}">
+            <i class="fas fa-chevron-right"></i>
+        </a>
+    {% else %}
+        <span class="btn btn-sm btn-link text-muted p-0 px-2 disabled" 
+              title="No newer logs" style="cursor: default; opacity: 0.3;">
+            <i class="fas fa-chevron-right"></i>
+        </span>
+    {% endif %}
 
 </div>
 {% endblock %}
@@ -43,15 +59,16 @@
         </a>
     {% else %}
         <div class="d-flex align-items-center position-relative">
-            <input type="date" value="{{ current_date|date:'Y-m-d' }}" 
-                   class="form-control form-control-sm bg-dark text-white border-secondary shadow-sm"
-                   style="width: 130px; font-size: 0.9rem;"
-                   onchange="location.href='?date=' + this.value">
-            
+            <input type="text" id="flatpickr-date" 
+                value="{{ current_date|date:'Y-m-d' }}" 
+                class="form-control form-control-sm bg-dark text-white border-secondary shadow-sm text-center"
+                style="width: 130px; font-size: 0.9rem; cursor: pointer;"
+                placeholder="Select Date" readonly>
+    
             {% if current_date|date:"Y-m-d" != today_date|date:"Y-m-d" %}
             <a href="{% url 'elog:log_list' logbook.id %}" 
-               class="position-absolute start-100 translate-middle-y ms-2 badge bg-danger text-decoration-none shadow-sm" 
-               style="top: 50%;" title="Go to Today">
+                class="position-absolute start-100 translate-middle-y ms-2 badge bg-danger text-decoration-none shadow-sm" 
+                style="top: 50%;" title="Go to Today">
                 LIVE
             </a>
             {% endif %}
@@ -88,7 +105,7 @@
 <div class="container-fluid py-3">
     
     {% for log in logs %}
-    <article class="card mb-4 shadow-sm border-0">
+    <article class="card mb-4 shadow-sm border-0" id="log-{{ log.id }}">
         
         <div class="card-header bg-light d-flex justify-content-between align-items-center py-2 border-bottom">
             <div class="header-left d-flex align-items-center">
@@ -189,24 +206,139 @@
     </div>
     {% endif %}
 
+    <div class="position-fixed bottom-0 end-0 p-4 d-flex flex-column gap-2" style="z-index: 1050;">
+        <button onclick="scrollToTop()" class="btn btn-secondary rounded-circle shadow opacity-75 nav-float-btn" title="Go to Top">
+            <i class="fas fa-arrow-up"></i>
+        </button>
+        <button onclick="scrollToBottom()" class="btn btn-secondary rounded-circle shadow opacity-75 nav-float-btn" title="Go to Bottom">
+            <i class="fas fa-arrow-down"></i>
+        </button>
+    </div>
+
 </div>
 {% endblock %}
 
 {% block extra_script %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<style>
+    /* Flatpickr: Dot for days with logs */
+    .flatpickr-day.has-log::after {
+        content: "";
+        position: absolute;
+        bottom: 2px;
+        left: 0;
+        right: 0;
+        margin: 0 auto;
+        width: 4px;
+        height: 4px;
+        background-color: #0d6efd; /* Bootstrap Primary */
+        border-radius: 50%;
+    }
+    .flatpickr-day.has-log {
+        font-weight: bold;
+        color: #0d6efd;
+    }
+    .flatpickr-day.selected.has-log {
+        color: #fff;
+    }
+    .flatpickr-day.selected.has-log::after {
+        background-color: #fff;
+    }
+
+    /* Effects */
+    .hover-effect:hover {
+        background-color: #0d6efd;
+        color: white;
+        transform: translateY(-2px);
+        transition: all 0.2s ease-in-out;
+    }
+    
+    /* Floating Buttons */
+    .nav-float-btn {
+        width: 45px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+    .nav-float-btn:hover {
+        opacity: 1 !important;
+        background-color: #0d6efd;
+        color: white;
+        transform: scale(1.1);
+    }
+</style>
+
 <script>
-    // [추가된 기능] 페이지 로드 시 자동으로 맨 아래로 스크롤
     document.addEventListener("DOMContentLoaded", function() {
-        // 하단 버튼이 있다면 그곳으로, 없다면 페이지 맨 끝으로 스크롤
-        const bottomBar = document.getElementById('bottom-action-bar');
-        
-        if (bottomBar) {
-            // 버튼이 화면 중앙쯤에 오도록 부드럽게 스크롤
-            bottomBar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // --- A. Anchor & Auto Scroll Logic ---
+        const hash = window.location.hash;
+
+        if (hash) {
+            // Case 1: Anchor exists (#log-ID) -> Scroll to specific log
+            const targetId = hash.substring(1);
+            const targetElement = document.getElementById(targetId);
+            
+            if (targetElement) {
+                setTimeout(() => {
+                    targetElement.scrollIntoView({ behavior: 'auto', block: 'center' });
+                    
+                    targetElement.style.transition = "box-shadow 0.3s";
+                    targetElement.style.boxShadow = "0 0 0 4px rgba(13, 110, 253, 0.3)";
+                    setTimeout(() => {
+                        targetElement.style.boxShadow = "";
+                    }, 1500);
+                }, 100); 
+            }
         } else {
-            // 버튼이 없는 경우(로그가 없거나 권한이 없을 때)도 맨 아래로
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            // Case 2: No Anchor -> Scroll to Bottom
+            const bottomBar = document.getElementById('bottom-action-bar');
+            if (bottomBar) {
+                setTimeout(() => {
+                    bottomBar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            } else {
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            }
         }
+
+        // --- B. Flatpickr Logic ---
+        const logDates = {{ log_dates|safe }}; // ['2023-01-01', ...]
+
+        flatpickr("#flatpickr-date", {
+            dateFormat: "Y-m-d",
+            defaultDate: "{{ current_date|date:'Y-m-d' }}",
+            disableMobile: "true",
+            
+            onChange: function(selectedDates, dateStr, instance) {
+                window.location.href = '?date=' + dateStr;
+            },
+
+            onDayCreate: function(dObj, dStr, fp, dayElem) {
+                const dateObj = dayElem.dateObj;
+                const year = dateObj.getFullYear();
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const day = String(dateObj.getDate()).padStart(2, '0');
+                const formattedDate = `${year}-${month}-${day}`;
+
+                if (logDates.includes(formattedDate)) {
+                    dayElem.classList.add("has-log");
+                }
+            }
+        });
     });
+
+    // --- C. Helper Functions ---
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function scrollToBottom() {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
 
     function confirmDelete(deleteUrl) {
         if (confirm("Are you sure you want to delete this log?\n\nWarning: Deleted data cannot be recovered.")) {
@@ -225,13 +357,4 @@
         }
     }
 </script>
-<style>
-    /* 하단 버튼 호버 효과 */
-    .hover-effect:hover {
-        background-color: #0d6efd;
-        color: white;
-        transform: translateY(-2px);
-        transition: all 0.2s ease-in-out;
-    }
-</style>
 {% endblock %}
